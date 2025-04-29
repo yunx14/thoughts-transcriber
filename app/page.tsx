@@ -5,6 +5,9 @@ import { Thought } from '@/lib/supabase';
 import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { FaSpinner } from 'react-icons/fa';
+import { useAuth } from '@/lib/auth-context';
+import Auth from './components/Auth';
+import UserProfile from './components/UserProfile';
 
 // Dynamically import browser-only components
 const SpeechRecorder = dynamic(() => import('./components/SpeechRecorder'), { ssr: false });
@@ -15,6 +18,8 @@ type FormValues = {
 };
 
 export default function Home() {
+  const { user, session, isLoading: authLoading } = useAuth();
+  
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [transcription, setTranscription] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -27,11 +32,22 @@ export default function Home() {
     formState: { errors }
   } = useForm<FormValues>();
 
-  // Fetch thoughts on initial load
+  // Fetch thoughts on initial load or when auth state changes
   useEffect(() => {
     const fetchThoughts = async () => {
+      if (!user || !session) {
+        setThoughts([]);
+        setLoadingThoughts(false);
+        return;
+      }
+      
       try {
-        const response = await fetch('/api/thoughts');
+        const response = await fetch('/api/thoughts', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        
         if (response.ok) {
           const data = await response.json();
           setThoughts(data);
@@ -45,8 +61,10 @@ export default function Home() {
       }
     };
 
-    fetchThoughts();
-  }, []);
+    if (!authLoading) {
+      fetchThoughts();
+    }
+  }, [user, session, authLoading]);
 
   // Handle speech recognition transcription complete
   const handleTranscriptionComplete = (text: string) => {
@@ -59,6 +77,11 @@ export default function Home() {
       alert('Please record your thought first');
       return;
     }
+    
+    if (!user || !session) {
+      alert('You must be logged in to save thoughts');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -67,6 +90,7 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           title: data.title,
@@ -91,9 +115,31 @@ export default function Home() {
     }
   };
 
+  // If authentication is still loading, show a loading spinner
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <FaSpinner className="animate-spin text-blue-500 text-4xl" />
+      </div>
+    );
+  }
+  
+  // If user is not authenticated, show the auth component
+  if (!user) {
+    return (
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 className="text-3xl font-bold text-center mb-8">Voice Thoughts Recorder</h1>
+        <Auth />
+      </main>
+    );
+  }
+
+  // If user is authenticated, show the thoughts recorder
   return (
     <main className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="text-3xl font-bold text-center mb-8">Voice Thoughts Recorder</h1>
+      
+      <UserProfile />
       
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Capture a New Thought</h2>
