@@ -1,103 +1,158 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Thought } from '@/lib/supabase';
+import dynamic from 'next/dynamic';
+import { useForm } from 'react-hook-form';
+import { FaSpinner } from 'react-icons/fa';
+
+// Dynamically import browser-only components
+const SpeechRecorder = dynamic(() => import('./components/SpeechRecorder'), { ssr: false });
+const ThoughtsList = dynamic(() => import('./components/ThoughtsList'), { ssr: false });
+
+type FormValues = {
+  title: string;
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [thoughts, setThoughts] = useState<Thought[]>([]);
+  const [transcription, setTranscription] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingThoughts, setLoadingThoughts] = useState(true);
+  
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<FormValues>();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Fetch thoughts on initial load
+  useEffect(() => {
+    const fetchThoughts = async () => {
+      try {
+        const response = await fetch('/api/thoughts');
+        if (response.ok) {
+          const data = await response.json();
+          setThoughts(data);
+        } else {
+          console.error('Failed to fetch thoughts');
+        }
+      } catch (error) {
+        console.error('Error fetching thoughts:', error);
+      } finally {
+        setLoadingThoughts(false);
+      }
+    };
+
+    fetchThoughts();
+  }, []);
+
+  // Handle speech recognition transcription complete
+  const handleTranscriptionComplete = (text: string) => {
+    setTranscription(text);
+  };
+
+  // Handle form submission
+  const onSubmit = async (data: FormValues) => {
+    if (!transcription) {
+      alert('Please record your thought first');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: data.title,
+          content: transcription,
+        }),
+      });
+
+      if (response.ok) {
+        const newThought = await response.json();
+        setThoughts(prev => [newThought, ...prev]);
+        reset();
+        setTranscription('');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to save thought: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error saving thought:', error);
+      alert('Failed to save your thought');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <h1 className="text-3xl font-bold text-center mb-8">Voice Thoughts Recorder</h1>
+      
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">Capture a New Thought</h2>
+        
+        <div className="mb-6">
+          <SpeechRecorder onTranscriptionComplete={handleTranscriptionComplete} />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        
+        {transcription && (
+          <div className="bg-blue-50 p-3 rounded-lg mb-4">
+            <p className="text-sm text-blue-800 font-semibold mb-1">Your Recorded Thought:</p>
+            <p className="text-sm">{transcription}</p>
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="mb-4">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              Thought Title
+            </label>
+            <input
+              id="title"
+              type="text"
+              {...register('title', { required: 'Title is required' })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter a title for your thought"
+            />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+            )}
+          </div>
+          
+          <button
+            type="submit"
+            disabled={isLoading || !transcription}
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <FaSpinner className="inline mr-2 animate-spin" /> Saving...
+              </>
+            ) : (
+              'Save Thought'
+            )}
+          </button>
+        </form>
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4">Your Thoughts</h2>
+        
+        {loadingThoughts ? (
+          <div className="flex justify-center items-center py-10">
+            <FaSpinner className="animate-spin text-gray-500 text-2xl" />
+          </div>
+        ) : (
+          <ThoughtsList thoughts={thoughts} />
+        )}
+      </div>
+    </main>
   );
 }

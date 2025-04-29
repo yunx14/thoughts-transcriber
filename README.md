@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Thoughts Transcriber
 
-## Getting Started
+A Next.js application that allows you to record your thoughts using speech recognition and save them for future reference.
 
-First, run the development server:
+## Features
+
+- 🎙️ Record thoughts directly using your device's microphone
+- 🗣️ Real-time speech-to-text conversion using Web Speech API
+- 💾 Store thoughts in Supabase
+- 📱 Responsive design that works on desktop and mobile
+
+## Prerequisites
+
+- Node.js 18 or higher
+- A Supabase account and project
+- Modern browser that supports Web Speech API (Chrome, Edge, or Safari recommended)
+
+## Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/thoughts-transcriber.git
+cd thoughts-transcriber
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create a `.env.local` file in the root directory with the following variables:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. Create a table in your Supabase project:
+
+```sql
+CREATE TABLE thoughts (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+  user_id UUID
+);
+```
+
+5. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How to Use
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Navigate to the application in your browser
+2. Click the microphone button to start recording
+3. Speak your thoughts clearly
+4. Click the stop button when you're finished
+5. Click the save button to confirm your transcription
+6. Enter a title for your thought
+7. Click "Save Thought"
+8. View your saved thoughts in the list below
 
-## Learn More
+## Technologies Used
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Web Speech API
+- Supabase
+- React Hook Form
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Browser Compatibility
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This application relies on the Web Speech API, which is supported in:
+- Chrome
+- Edge
+- Safari
+- Some Chromium-based browsers
 
-## Deploy on Vercel
+Firefox requires enabling flags for speech recognition support.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
